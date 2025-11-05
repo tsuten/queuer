@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { ReactSortable } from "react-sortablejs";
-import { getQueuesByCategory, deleteCategory, addQueue, deleteQueue, reorderQueues } from "../actions/queueActions";
-import { Ellipsis, Trash2, CircleX } from 'lucide-react';
+import { getQueuesByCategory, deleteCategory, addQueue, deleteQueue, reorderQueues, updateQueue } from "../actions/queueActions";
+import { Ellipsis, Trash2, X } from 'lucide-react';
 import { Toast } from '@base-ui-components/react/toast';
 import QueuePushInput from './queuePushInput';
 import styles from './queue.module.css';
@@ -45,6 +45,8 @@ function Queue({ category }) {
     const [isDeleted, setIsDeleted] = useState(false);
     const toastManager = Toast.useToastManager();
     const [hoveringTargetId, setHoveringTargetId] = useState(null);
+    const [editingItemId, setEditingItemId] = useState(null);
+    const [editingValue, setEditingValue] = useState('');
     const fetchQueues = useCallback(async () => {
         setLoading(true);
         setError(null);
@@ -128,6 +130,20 @@ function Queue({ category }) {
         setQueue(prev => prev.slice(0, -1));
     }
 
+    const handleDelete = async (queueId) => {
+        try {
+            const result = await deleteQueue(category.id, queueId);
+            if (result.success) {
+                setQueue(prev => prev.filter(item => item.id !== queueId));
+            }
+        } catch (error) {
+            toastManager.add({
+                title: "削除に失敗しました",
+                description: "タスクの削除中にエラーが発生しました。",
+            });
+        }
+    }
+
     const handleDeleteCategory = async () => {
         const result = await deleteCategory(category.id);
         if (result.success) {
@@ -141,6 +157,50 @@ function Queue({ category }) {
                 title: "削除に失敗しました",
                 description: "カテゴリの削除中にエラーが発生しました。",
             });
+        }
+    }
+
+    const handleDoubleClick = (item) => {
+        setEditingItemId(item.id);
+        setEditingValue(item.name);
+    }
+
+    const handleBlur = async (item) => {
+        if (editingValue.trim() === '') {
+            setEditingItemId(null);
+            setEditingValue('');
+            return;
+        }
+        
+        if (editingValue !== item.name) {
+            try {
+                const result = await updateQueue(category.id, item.id, { name: editingValue.trim() });
+                if (result.success && result.data) {
+                    setQueue(prev => prev.map(q => q.id === item.id ? result.data : q));
+                } else {
+                    toastManager.add({
+                        title: "更新に失敗しました",
+                        description: "タスク名の更新中にエラーが発生しました。",
+                    });
+                }
+            } catch (error) {
+                toastManager.add({
+                    title: "更新に失敗しました",
+                    description: "タスク名の更新中にエラーが発生しました。",
+                });
+            }
+        }
+        
+        setEditingItemId(null);
+        setEditingValue('');
+    }
+
+    const handleKeyDown = (e, item) => {
+        if (e.key === 'Enter') {
+            e.target.blur();
+        } else if (e.key === 'Escape') {
+            setEditingItemId(null);
+            setEditingValue('');
         }
     }
     
@@ -189,25 +249,49 @@ function Queue({ category }) {
                     ))
                 ) : (
                     queue.map((item, index) => (
-                        index + 1 >= category.popLimit || !category.popLimit ? (
-                            <div key={item.id} onMouseEnter={() => setHoveringTargetId(item.id)} onMouseLeave={() => setHoveringTargetId(null)} className="flex justify-between border-2 border-gray-300 rounded-md p-2 my-1 cursor-pointer w-full">
-                                <h1>{item.name}</h1>
+                        index >= category.popLimit || !category.popLimit ? (
+                            <div key={item.id} onMouseEnter={() => setHoveringTargetId(item.id)} onMouseLeave={() => setHoveringTargetId(null)} onDoubleClick={() => handleDoubleClick(item)} className="flex justify-between border-2 border-gray-300 rounded-md p-2 my-1 items-center cursor-pointer w-full">
+                                {editingItemId === item.id ? (
+                                    <input
+                                        type="text"
+                                        value={editingValue}
+                                        onChange={(e) => setEditingValue(e.target.value)}
+                                        onBlur={() => handleBlur(item)}
+                                        onKeyDown={(e) => handleKeyDown(e, item)}
+                                        autoFocus
+                                        className="flex-1 outline-none bg-transparent"
+                                    />
+                                ) : (
+                                    <h1>{item.name}</h1>
+                                )}
                                 <Button variant="ghost" className="w-4 h-4 cursor-pointer" onClick={() => handleDelete(item.id)}>
                                     {hoveringTargetId === item.id ? (
-                                        <CircleX className="w-4 h-4 text-gray-500" />
+                                        <X className="w-4 h-4 text-gray-500" />
                                     ) : (
-                                        <CircleX className="w-4 h-4 text-gray-500 hidden" />
+                                        <X className="w-4 h-4 text-gray-500 hidden" />
                                     )}
                                 </Button>
                             </div>
                         ) : (
-                            <div key={item.id} onMouseEnter={() => setHoveringTargetId(item.id)} onMouseLeave={() => setHoveringTargetId(null)} className="flex justify-between border-2 border-gray-300 rounded-md p-2 bg-gray-200 my-1 cursor-pointer w-full">
-                                <h1>{item.name}</h1>
+                            <div key={item.id} onMouseEnter={() => setHoveringTargetId(item.id)} onMouseLeave={() => setHoveringTargetId(null)} onDoubleClick={() => handleDoubleClick(item)} className="flex justify-between border-2 border-gray-300 rounded-md p-2 bg-gray-200 my-1 items-center cursor-pointer w-full">
+                                {editingItemId === item.id ? (
+                                    <input
+                                        type="text"
+                                        value={editingValue}
+                                        onChange={(e) => setEditingValue(e.target.value)}
+                                        onBlur={() => handleBlur(item)}
+                                        onKeyDown={(e) => handleKeyDown(e, item)}
+                                        autoFocus
+                                        className="flex-1 outline-none bg-transparent"
+                                    />
+                                ) : (
+                                    <h1>{item.name}</h1>
+                                )}
                                 <Button variant="ghost" className="w-4 h-4 cursor-pointer" onClick={() => handleDelete(item.id)}>
                                     {hoveringTargetId === item.id ? (
-                                        <CircleX className="w-4 h-4 text-gray-500" />
+                                        <X className="w-4 h-4 text-gray-500" />
                                     ) : (
-                                        <CircleX className="w-4 h-4 text-gray-500 hidden" />
+                                        <X className="w-4 h-4 text-gray-500 hidden" />
                                     )}
                                 </Button>
                             </div>
