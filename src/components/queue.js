@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { ReactSortable } from "react-sortablejs";
-import { getQueuesByCategory, deleteCategory, addQueue, deleteQueue, reorderQueues, updateQueue } from "../actions/queueActions";
+import { getQueuesByCategory, deleteCategory, addQueue, deleteQueue, reorderQueues, updateQueue, updateCategory } from "../actions/queueActions";
 import { Ellipsis, Trash2, X } from 'lucide-react';
 import { Toast } from '@base-ui-components/react/toast';
 import QueuePushInput from './queuePushInput';
@@ -22,6 +22,16 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import QueueCategoryName from "./queueCategoryName";
 
 
@@ -47,6 +57,11 @@ function Queue({ category }) {
     const [hoveringTargetId, setHoveringTargetId] = useState(null);
     const [editingItemId, setEditingItemId] = useState(null);
     const [editingValue, setEditingValue] = useState('');
+    const [isPopLimitDialogOpen, setIsPopLimitDialogOpen] = useState(false);
+    const [popLimitValue, setPopLimitValue] = useState(category.popLimit || 0);
+    const [currentCategory, setCurrentCategory] = useState(category);
+    const [popLimitError, setPopLimitError] = useState(false);
+    const [prevPopLimit, setPrevPopLimit] = useState(0);
     const fetchQueues = useCallback(async () => {
         setLoading(true);
         setError(null);
@@ -69,6 +84,10 @@ function Queue({ category }) {
     useEffect(() => {
         fetchQueues();
     }, [fetchQueues]);
+
+    useEffect(() => {
+        setCurrentCategory(category);
+    }, [category]);
 
     const persistReorder = useCallback(async (newList) => {
         const newOrderIds = [...newList].reverse().map(item => item.id);
@@ -203,6 +222,49 @@ function Queue({ category }) {
             setEditingValue('');
         }
     }
+
+    const handleOpenPopLimitDialog = () => {
+        setPopLimitValue(currentCategory.popLimit || 0);
+        setIsPopLimitDialogOpen(true);
+    }
+
+    const handleSavePopLimit = async () => {
+        if (popLimitValue <= 0) {
+            setPopLimitError(true);
+            setPrevPopLimit(popLimitValue);
+            return;
+        }
+        try {
+            const result = await updateCategory(currentCategory.id, { popLimit: parseInt(popLimitValue) || 0 });
+            if (result.success && result.data) {
+                setCurrentCategory(result.data);
+                toastManager.add({
+                    title: "Pop Limitを更新しました",
+                    description: `Pop Limitが ${popLimitValue} に設定されました。`,
+                });
+            } else {
+                toastManager.add({
+                    title: "更新に失敗しました",
+                    description: "Pop Limitの更新中にエラーが発生しました。",
+                });
+            }
+        } catch (error) {
+            toastManager.add({
+                title: "更新に失敗しました",
+                description: "Pop Limitの更新中にエラーが発生しました。",
+            });
+        }
+        setIsPopLimitDialogOpen(false);
+    }
+
+    useEffect(() => {
+        // 前回の値を保持して、それと比較して変更があったらエラーフラグをfalse
+        if (prevPopLimit !== popLimitValue) {
+            setPopLimitError(false);
+            setPrevPopLimit(popLimitValue);
+            console.log(prevPopLimit, popLimitValue);
+        }
+    }, [popLimitValue]);
     
     return (
         isDeleted ? (
@@ -223,7 +285,7 @@ function Queue({ category }) {
                             <Trash2 className="w-4 h-4 text-red-500" />
                             Delete Category
                         </DropdownMenuItem>
-                        <DropdownMenuItem className="cursor-pointer">
+                        <DropdownMenuItem onClick={handleOpenPopLimitDialog} className="cursor-pointer">
                             Change pop limit
                         </DropdownMenuItem>
                     </DropdownMenuContent>
@@ -249,7 +311,7 @@ function Queue({ category }) {
                     ))
                 ) : (
                     queue.map((item, index) => (
-                        index >= queue.length - category.popLimit || !category.popLimit ? (
+                        index >= queue.length - currentCategory.popLimit || !currentCategory.popLimit ? (
                             <div key={item.id} onMouseEnter={() => setHoveringTargetId(item.id)} onMouseLeave={() => setHoveringTargetId(null)} onDoubleClick={() => handleDoubleClick(item)} className="flex justify-between border-2 border-gray-300 rounded-md p-2 my-1 items-center cursor-pointer w-full">
                                 {editingItemId === item.id ? (
                                     <input
@@ -305,6 +367,45 @@ function Queue({ category }) {
                 <div className="flex justify-end items-end">
                     </div>
                 </div>
+
+            <Dialog open={isPopLimitDialogOpen} onOpenChange={setIsPopLimitDialogOpen}>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle>Pop Limitの変更</DialogTitle>
+                        <DialogDescription>
+                            キューから削除されないように保護する要素数を設定します。
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        {popLimitError && (
+                            <div className="text-sm text-red-500">
+                                Pop Limitは0以上に設定してください。
+                            </div>
+                        )}
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="popLimit" className="text-right">
+                                Pop Limit
+                            </Label>
+                            <Input
+                                id="popLimit"
+                                type="number"
+                                min="0"
+                                value={popLimitValue}
+                                onChange={(e) => setPopLimitValue(e.target.value)}
+                                className="col-span-3"
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsPopLimitDialogOpen(false)}>
+                            キャンセル
+                        </Button>
+                        <Button onClick={handleSavePopLimit}>
+                            保存
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
             </div>
         )
     )
