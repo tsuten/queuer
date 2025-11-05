@@ -18,7 +18,8 @@
 /out/
 
 # production
-/build
+/release
+# /build は electron-builder のアイコンディレクトリとして使用するため除外しない
 
 # misc
 .DS_Store
