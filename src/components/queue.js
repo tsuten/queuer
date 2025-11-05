@@ -249,7 +249,7 @@ function Queue({ category }) {
                     ))
                 ) : (
                     queue.map((item, index) => (
-                        index >= category.popLimit || !category.popLimit ? (
+                        index >= queue.length - category.popLimit || !category.popLimit ? (
                             <div key={item.id} onMouseEnter={() => setHoveringTargetId(item.id)} onMouseLeave={() => setHoveringTargetId(null)} onDoubleClick={() => handleDoubleClick(item)} className="flex justify-between border-2 border-gray-300 rounded-md p-2 my-1 items-center cursor-pointer w-full">
                                 {editingItemId === item.id ? (
                                     <input
