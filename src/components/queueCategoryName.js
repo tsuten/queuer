@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { renameCategory } from "../actions/queueActions";
+import { renameCategory } from "../utils/electronDb";
 
 export default function QueueCategoryName({ category }) {
     const [categoryName, setCategoryName] = useState(category.name);

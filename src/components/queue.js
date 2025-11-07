@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { ReactSortable } from "react-sortablejs";
-import { getQueuesByCategory, deleteCategory, addQueue, deleteQueue, reorderQueues, updateQueue, updateCategory } from "../actions/queueActions";
+import { getQueuesByCategory, deleteCategory, addQueue, deleteQueue, reorderQueues, updateQueue, updateCategory } from "../utils/electronDb";
 import { Ellipsis, Trash2, X } from 'lucide-react';
 import { Toast } from '@base-ui-components/react/toast';
 import QueuePushInput from './queuePushInput';

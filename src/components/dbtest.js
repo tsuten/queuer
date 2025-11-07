@@ -10,7 +10,7 @@ import {
   deleteQueue, 
   getSettings, 
   updateSettings 
-} from '../actions/queueActions'
+} from '../utils/electronDb'
 
 export default function DBTest() {
   const [categories, setCategories] = useState([])

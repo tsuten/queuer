@@ -4,33 +4,45 @@ import Image from "next/image";
 import Queue from "../components/queue";
 import DBTest from "../components/dbtest";
 import { useState, useEffect } from "react";
-import { getCategories, addCategory } from "../actions/queueActions";
+import { getCategories, addCategory } from "../utils/electronDb";
 
 export default function Home() {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [categoryInput, setCategoryInput] = useState("");
+  const [error, setError] = useState(null);
 
   const handleAddCategory = async () => {
-    const result = await addCategory({ name: categoryInput, popLimit: 5 });
-    if (result.success) {
-      setCategories([...categories, result.data]);
-      setCategoryInput("");
+    try {
+      const result = await addCategory({ name: categoryInput, popLimit: 5 });
+      if (result.success) {
+        setCategories([...categories, result.data]);
+        setCategoryInput("");
+        setError(null);
+      } else {
+        setError(result.error || 'Failed to add category');
+      }
+    } catch (error) {
+      console.error('Error adding category:', error);
+      setError(error.message || 'Failed to add category');
     }
   }
 
   useEffect(() => {
     const fetchCategories = async () => {
       try {
+        setError(null);
         const result = await getCategories();
         if (result.success && result.data) {
           setCategories(result.data);
         } else {
           setCategories([]);
+          setError(result.error || 'Failed to fetch categories');
         }
       } catch (error) {
         console.error('Error fetching categories:', error);
         setCategories([]);
+        setError(error.message || 'Failed to fetch categories. Make sure you are running in Electron.');
       } finally {
         setLoading(false);
       }
@@ -45,6 +57,11 @@ export default function Home() {
           <h1 className="text-4xl font-bold">Queuer</h1>
           {loading ? (
             <div>Loading...</div>
+          ) : error ? (
+            <div className="text-red-500 p-4 border border-red-300 rounded-md">
+              <p className="font-bold">Error:</p>
+              <p>{error}</p>
+            </div>
           ) : (
             <div className="grid w-full gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {categories && categories.length > 0 ? (

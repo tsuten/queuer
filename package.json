@@ -4,13 +4,14 @@
   "description": "Queue management application",
   "author": "Your Name",
   "private": true,
-  "main": "electron.js",
+  "type": "module",
+  "main": "electron.mjs",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "electron:dev": "NODE_ENV=development electron .",
-    "electron:build": "next build && electron .",
+    "electron:build": "next build && NODE_ENV=production electron .",
     "pack": "next build && electron-builder --dir",
     "pack:win": "next build && electron-builder --win --dir",
     "pack:linux": "next build && electron-builder --linux --dir",
@@ -45,12 +46,14 @@
     "appId": "com.queuer.app",
     "productName": "Queuer",
     "files": [
-      "electron.js",
-      ".next/**/*",
+      "electron.mjs",
+      "preload.cjs",
+      "out/**/*",
       "node_modules/**/*",
       "package.json",
       "public/**/*",
-      "data/**/*"
+      "data/**/*",
+      "src/utils/db.js"
     ],
     "directories": {
       "buildResources": "build",

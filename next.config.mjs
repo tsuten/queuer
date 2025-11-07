@@ -2,10 +2,10 @@
 const nextConfig = {
   /* config options here */
   reactCompiler: true,
-  experimental: {
-    serverActions: {
-      bodySizeLimit: '2mb',
-    },
+  output: 'export',  // 静的エクスポートを有効化
+  assetPrefix: './',  // 相対パスを使用（Electron用）
+  images: {
+    unoptimized: true,  // 静的エクスポート時は画像最適化を無効化
   },
 };
 
