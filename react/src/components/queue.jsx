@@ -1,0 +1,376 @@
+import { useState, useEffect, useCallback } from "react";
+import { ReactSortable } from "react-sortablejs";
+import { getQueuesByCategory, deleteCategory, addQueue, deleteQueue, reorderQueues, updateQueue, updateCategory } from "../utils/electronDb";
+import { Ellipsis, Trash2, X } from 'lucide-react';
+import QueuePushInput from './queuePushInput';
+import { Button } from "../components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuPortal,
+  DropdownMenuSeparator,
+  DropdownMenuShortcut,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from "../components/ui/dropdown-menu"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../components/ui/dialog"
+import { Input } from "../components/ui/input"
+import { Label } from "../components/ui/label"
+import QueueCategoryName from "../components/queueCategoryName";
+
+function Queue({ category }) {
+    const [queue, setQueue] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [isDeleted, setIsDeleted] = useState(false);
+    const [hoveringTargetId, setHoveringTargetId] = useState(null);
+    const [editingItemId, setEditingItemId] = useState(null);
+    const [editingValue, setEditingValue] = useState('');
+    const [isPopLimitDialogOpen, setIsPopLimitDialogOpen] = useState(false);
+    const [popLimitValue, setPopLimitValue] = useState(category.popLimit || 0);
+    const [currentCategory, setCurrentCategory] = useState(category);
+    const [popLimitError, setPopLimitError] = useState(false);
+    const [prevPopLimit, setPrevPopLimit] = useState(0);
+    const fetchQueues = useCallback(async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            const result = await getQueuesByCategory(category.id);
+            if (result.success) {
+                setQueue(result.data.toReversed() || []);
+            } else {
+                setError(result.error);
+                setQueue([]);
+            }
+        } catch (error) {
+            setError(error.message);
+            setQueue([]);
+        } finally {
+            setLoading(false);
+        }
+    }, [category.id]);
+
+    useEffect(() => {
+        fetchQueues();
+    }, [fetchQueues]);
+
+    useEffect(() => {
+        setCurrentCategory(category);
+    }, [category]);
+
+    const persistReorder = useCallback(async (newList) => {
+        const newOrderIds = [...newList].reverse().map(item => item.id);
+        try {
+            const result = await reorderQueues(category.id, newOrderIds);
+            if (!result.success) {
+                setError(result.error ?? 'Failed to reorder queue');
+                await fetchQueues();
+            }
+        } catch (error) {
+            setError(error.message);
+            await fetchQueues();
+        }
+    }, [category.id, fetchQueues]);
+
+    const handleListChange = useCallback((newList, _sortable, evt) => {
+        if (!evt) {
+            setQueue(newList);
+            return;
+        }
+
+        const previousOrder = queue.map(item => item.id).join(',');
+        const nextOrder = newList.map(item => item.id).join(',');
+
+        setQueue(newList);
+
+        if (previousOrder !== nextOrder) {
+            persistReorder(newList);
+        }
+    }, [persistReorder, queue]);
+
+    const handlePush = async (item) => {
+        if (!item.trim()) return; // 空の入力を防ぐ
+        try {
+            const result = await addQueue(category.id, { name: item.trim() });
+            if (result.success && result.data) {
+                setQueue(prev => [result.data, ...prev]);
+            }
+        }
+        catch (error) {
+        }
+    }
+
+    const handlePop = async () => {
+        if (queue.length === 0) return;
+        const target = queue[queue.length - 1];
+        try {
+            const result = await deleteQueue(category.id, target.id);
+        } catch (error) {
+        }
+        setQueue(prev => prev.slice(0, -1));
+    }
+
+    const handleDelete = async (queueId) => {
+        try {
+            const result = await deleteQueue(category.id, queueId);
+            if (result.success) {
+                setQueue(prev => prev.filter(item => item.id !== queueId));
+            }
+        } catch (error) {
+        }
+    }
+
+    const handleDeleteCategory = async () => {
+        const result = await deleteCategory(category.id);
+        if (result.success) {
+            setIsDeleted(true);
+        } else {
+        }
+    }
+
+    const handleDoubleClick = (item) => {
+        setEditingItemId(item.id);
+        setEditingValue(item.name);
+    }
+
+    const handleBlur = async (item) => {
+        if (editingValue.trim() === '') {
+            setEditingItemId(null);
+            setEditingValue('');
+            return;
+        }
+        
+        if (editingValue !== item.name) {
+            try {
+                const result = await updateQueue(category.id, item.id, { name: editingValue.trim() });
+                if (result.success && result.data) {
+                    setQueue(prev => prev.map(q => q.id === item.id ? result.data : q));
+                } else {
+                }
+            } catch (error) {
+            }
+        }
+        
+        setEditingItemId(null);
+        setEditingValue('');
+    }
+
+    const handleKeyDown = (e, item) => {
+        if (e.key === 'Enter') {
+            e.target.blur();
+        } else if (e.key === 'Escape') {
+            setEditingItemId(null);
+            setEditingValue('');
+        }
+    }
+
+    const handleOpenPopLimitDialog = () => {
+        setPopLimitValue(currentCategory.popLimit || 0);
+        setIsPopLimitDialogOpen(true);
+    }
+
+    const handleSavePopLimit = async () => {
+        if (popLimitValue <= 0) {
+            setPopLimitError(true);
+            setPrevPopLimit(popLimitValue);
+            return;
+        }
+        try {
+            const result = await updateCategory(currentCategory.id, { popLimit: parseInt(popLimitValue) || 0 });
+            if (result.success && result.data) {
+                setCurrentCategory(result.data);
+            } else {
+            }
+        } catch (error) {
+        }
+        setIsPopLimitDialogOpen(false);
+    }
+
+    useEffect(() => {
+        // 前回の値を保持して、それと比較して変更があったらエラーフラグをfalse
+        if (prevPopLimit !== popLimitValue) {
+            setPopLimitError(false);
+            setPrevPopLimit(popLimitValue);
+            console.log(prevPopLimit, popLimitValue);
+        }
+    }, [popLimitValue]);
+    
+    return (
+        isDeleted ? (
+            <div>
+                <h1>Category is deleted</h1>
+            </div>
+        ) : (
+        <div className="flex flex-col items-start justify-start">
+            <div className="flex flex-row items-center justify-between w-full">
+                <QueueCategoryName category={category} />
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="outline" className="w-8 h-8 rounded-full cursor-pointer">
+                            <Ellipsis className="w-4 h-4" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                        <DropdownMenuItem onClick={handleDeleteCategory} className="cursor-pointer text-red-500 focus:text-red-500">
+                            <Trash2 className="w-4 h-4 text-red-500" />
+                            Delete Category
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={handleOpenPopLimitDialog} className="cursor-pointer">
+                            Change pop limit
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            </div>
+            {error && (
+                <div className="text-sm text-red-500 my-2">
+                    {error}
+                </div>
+            )}
+            {/* 5つ以上の要素があった時のsort動作が不安定 */}
+            {queue.length > 5 && (
+                <div>
+                    <h1>Queue is full</h1>
+                </div>
+            )}
+            <ReactSortable animation={200} list={queue} setList={handleListChange} className="w-full">
+                {queue.length > 5 ? (
+                    queue.slice(queue.length - 5, queue.length).map((item) => (
+                        <div key={item.id} className="flex items-center justify-center border-2 border-gray-300 rounded-md p-2 m-2 w-full">
+                            <h1>{item.name}</h1>
+                        </div>
+                    ))
+                ) : (
+                    queue.map((item, index) => (
+                        index >= queue.length - currentCategory.popLimit || !currentCategory.popLimit ? (
+                            <div key={item.id} onMouseEnter={() => setHoveringTargetId(item.id)} onMouseLeave={() => setHoveringTargetId(null)} onDoubleClick={() => handleDoubleClick(item)} className="flex justify-between border-2 border-gray-300 rounded-md p-2 my-1 items-center cursor-pointer w-full">
+                                {editingItemId === item.id ? (
+                                    <input
+                                        type="text"
+                                        value={editingValue}
+                                        onChange={(e) => setEditingValue(e.target.value)}
+                                        onBlur={() => handleBlur(item)}
+                                        onKeyDown={(e) => handleKeyDown(e, item)}
+                                        autoFocus
+                                        className="flex-1 outline-none bg-transparent"
+                                    />
+                                ) : (
+                                    <h1>{item.name}</h1>
+                                )}
+                                <Button variant="ghost" className="w-4 h-4 cursor-pointer" onClick={() => handleDelete(item.id)}>
+                                    {hoveringTargetId === item.id ? (
+                                        <X className="w-4 h-4 text-gray-500" />
+                                    ) : (
+                                        <X className="w-4 h-4 text-gray-500 hidden" />
+                                    )}
+                                </Button>
+                            </div>
+                        ) : (
+                            <div key={item.id} onMouseEnter={() => setHoveringTargetId(item.id)} onMouseLeave={() => setHoveringTargetId(null)} onDoubleClick={() => handleDoubleClick(item)} className="flex justify-between border-2 border-gray-300 rounded-md p-2 bg-gray-200 my-1 items-center cursor-pointer w-full">
+                                {editingItemId === item.id ? (
+                                    <input
+                                        type="text"
+                                        value={editingValue}
+                                        onChange={(e) => setEditingValue(e.target.value)}
+                                        onBlur={() => handleBlur(item)}
+                                        onKeyDown={(e) => handleKeyDown(e, item)}
+                                        autoFocus
+                                        className="flex-1 outline-none bg-transparent"
+                                    />
+                                ) : (
+                                    <h1>{item.name}</h1>
+                                )}
+                                <Button variant="ghost" className="w-4 h-4 cursor-pointer" onClick={() => handleDelete(item.id)}>
+                                    {hoveringTargetId === item.id ? (
+                                        <X className="w-4 h-4 text-gray-500" />
+                                    ) : (
+                                        <X className="w-4 h-4 text-gray-500 hidden" />
+                                    )}
+                                </Button>
+                            </div>
+                        )
+                    ))
+                )}
+            </ReactSortable>
+            <Button onClick={() => handlePop()} variant="destructive" className="cursor-pointer flex w-full">Pop</Button>
+            <div className="flex flex-col">
+                <QueuePushInput onPush={handlePush} />
+                <div className="flex justify-end items-end">
+                    </div>
+                </div>
+
+            <Dialog open={isPopLimitDialogOpen} onOpenChange={setIsPopLimitDialogOpen}>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle>Pop Limitの変更</DialogTitle>
+                        <DialogDescription>
+                            キューから削除されないように保護する要素数を設定します。
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        {popLimitError && (
+                            <div className="text-sm text-red-500">
+                                Pop Limitは0以上に設定してください。
+                            </div>
+                        )}
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="popLimit" className="text-right">
+                                Pop Limit
+                            </Label>
+                            <Input
+                                id="popLimit"
+                                type="number"
+                                min="0"
+                                value={popLimitValue}
+                                onChange={(e) => setPopLimitValue(e.target.value)}
+                                className="col-span-3"
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsPopLimitDialogOpen(false)}>
+                            キャンセル
+                        </Button>
+                        <Button onClick={handleSavePopLimit}>
+                            保存
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+            </div>
+        )
+    )
+}
+
+function XIcon(props) {
+    return (
+        <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            {...props}
+        >
+            <path d="M18 6 6 18" />
+            <path d="m6 6 12 12" />
+        </svg>
+    );
+}
+
+export default Queue
