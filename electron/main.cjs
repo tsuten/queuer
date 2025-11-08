@@ -1,10 +1,18 @@
-const { app, BrowserWindow, ipcMain } = require('electron')
+const { app, BrowserWindow, ipcMain, Tray, Menu } = require('electron')
 const path = require('path')
 const db = require('./db.cjs')
 
 // データベースにappインスタンスを設定
 db.setApp(app)
 
+const template = [
+//   { label: 'Create Category', role: 'createCategory' },
+//   { label: 'Create Queue', role: 'createQueue' },
+//   { label: 'Quit', role: 'quit' }
+]
+
+const menu = Menu.buildFromTemplate(template)
+Menu.setApplicationMenu(menu)
 const createWindow = () => {
   const win = new BrowserWindow({
     width: 800,
@@ -15,9 +23,16 @@ const createWindow = () => {
         preload: path.join(__dirname, 'preload.cjs'),
       },
   })
-
   // Load the index.html from the app directory
-  win.loadFile(path.join(__dirname, '..', 'next', 'src', 'index.html'))
+  win.loadFile(path.join(__dirname, '..', 'react', 'dist', 'index.html'))
+}
+
+function createTray() {
+  const tray = new Tray(path.join(__dirname, 'assets', 'icon.png'))
+  tray.setToolTip('Queuer')
+  tray.on('click', () => {
+    BrowserWindow.getAllWindows()[0].show()
+  })
 }
 
 // IPCハンドラーの設定
@@ -46,6 +61,7 @@ function setupIPCHandlers() {
 }
 
 app.whenReady().then(() => {
+  createTray()
   setupIPCHandlers()
   createWindow()
 
