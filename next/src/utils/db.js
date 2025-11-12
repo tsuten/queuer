@@ -195,31 +195,9 @@ export async function moveQueue(fromCategoryId, toCategoryId, queueId, newIndex)
     if (fromCategory && toCategory) {
       const queueIndex = fromCategory.queues.findIndex(q => q.id === queueId)
       if (queueIndex !== -1) {
-        // 移動元カテゴリからキューを削除
         const [queue] = fromCategory.queues.splice(queueIndex, 1)
-        
-        // 移動先カテゴリに追加し、インデックスを再計算
+        queue.index = newIndex
         toCategory.queues.push(queue)
-        const maxIndex = toCategory.queues.length > 0 
-          ? Math.max(...toCategory.queues.map(q => q.index || 0)) 
-          : -1
-        queue.index = maxIndex + 1
-        
-        // 移動元カテゴリのインデックスを再計算
-        fromCategory.queues.forEach((q, idx) => {
-          q.index = idx
-        })
-        
-        // 移動先カテゴリのインデックスを再計算（必要な場合）
-        if (typeof newIndex === 'number' && newIndex >= 0) {
-          // 指定されたインデックスに移動
-          toCategory.queues.sort((a, b) => a.index - b.index)
-          const movedQueue = toCategory.queues.pop()
-          toCategory.queues.splice(newIndex, 0, movedQueue)
-          toCategory.queues.forEach((q, idx) => {
-            q.index = idx
-          })
-        }
       }
     }
   })

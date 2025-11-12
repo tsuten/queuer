@@ -17,12 +17,13 @@ import {
   moveQueue as dbMoveQueue,
   getSettings as dbGetSettings,
   updateSettings as dbUpdateSettings
-} from '../utils/dbAdapter'
+} from '../utils/db'
 
 // カテゴリ操作
 export async function getCategories() {
   try {
-    return await dbGetCategories()
+    const categories = await dbGetCategories()
+    return { success: true, data: categories }
   } catch (error) {
     return { success: false, error: error.message }
   }
@@ -30,7 +31,8 @@ export async function getCategories() {
 
 export async function getCategoryById(categoryId) {
   try {
-    return await dbGetCategoryById(categoryId)
+    const category = await dbGetCategoryById(categoryId)
+    return { success: true, data: category }
   } catch (error) {
     return { success: false, error: error.message }
   }
@@ -42,7 +44,8 @@ export async function addCategory(categoryData) {
   }
 
   try {
-    return await dbAddCategory(categoryData)
+    const newCategory = await dbAddCategory(categoryData)
+    return { success: true, data: newCategory }
   } catch (error) {
     return { success: false, error: error.message }
   }
@@ -50,7 +53,9 @@ export async function addCategory(categoryData) {
 
 export async function updateCategory(categoryId, updates) {
   try {
-    return await dbUpdateCategory(categoryId, updates)
+    await dbUpdateCategory(categoryId, updates)
+    const updatedCategory = await dbGetCategoryById(categoryId)
+    return { success: true, data: updatedCategory }
   } catch (error) {
     return { success: false, error: error.message }
   }
@@ -58,7 +63,8 @@ export async function updateCategory(categoryId, updates) {
 
 export async function deleteCategory(categoryId) {
   try {
-    return await dbDeleteCategory(categoryId)
+    await dbDeleteCategory(categoryId)
+    return { success: true }
   } catch (error) {
     return { success: false, error: error.message }
   }
@@ -66,7 +72,8 @@ export async function deleteCategory(categoryId) {
 
 export async function reorderCategories(categoryIds) {
   try {
-    return await dbReorderCategories(categoryIds)
+    await dbReorderCategories(categoryIds)
+    return { success: true }
   } catch (error) {
     return { success: false, error: error.message }
   }
@@ -75,7 +82,8 @@ export async function reorderCategories(categoryIds) {
 // キュー操作
 export async function getQueuesByCategory(categoryId) {
   try {
-    return await dbGetQueuesByCategory(categoryId)
+    const queues = await dbGetQueuesByCategory(categoryId)
+    return { success: true, data: queues }
   } catch (error) {
     return { success: false, error: error.message }
   }
@@ -83,7 +91,8 @@ export async function getQueuesByCategory(categoryId) {
 
 export async function renameCategory(categoryId, newName) {
   try {
-    return await dbUpdateCategory(categoryId, { name: newName })
+    await dbUpdateCategory(categoryId, { name: newName })
+    return { success: true }
   } catch (error) {
     return { success: false, error: error.message }
   }
@@ -91,7 +100,8 @@ export async function renameCategory(categoryId, newName) {
 
 export async function getAllQueues() {
   try {
-    return await dbGetAllQueues()
+    const queues = await dbGetAllQueues()
+    return { success: true, data: queues }
   } catch (error) {
     return { success: false, error: error.message }
   }
@@ -107,7 +117,8 @@ export async function addQueue(categoryId, queueData) {
   }
 
   try {
-    return await dbAddQueue(categoryId, queueData)
+    const newQueue = await dbAddQueue(categoryId, queueData)
+    return { success: true, data: newQueue }
   } catch (error) {
     return { success: false, error: error.message }
   }
@@ -115,7 +126,9 @@ export async function addQueue(categoryId, queueData) {
 
 export async function updateQueue(categoryId, queueId, updates) {
   try {
-    return await dbUpdateQueue(categoryId, queueId, updates)
+    await dbUpdateQueue(categoryId, queueId, updates)
+    const updatedQueue = await dbGetQueueById(categoryId, queueId)
+    return { success: true, data: updatedQueue }
   } catch (error) {
     return { success: false, error: error.message }
   }
@@ -123,7 +136,8 @@ export async function updateQueue(categoryId, queueId, updates) {
 
 export async function deleteQueue(categoryId, queueId) {
   try {
-    return await dbDeleteQueue(categoryId, queueId)
+    await dbDeleteQueue(categoryId, queueId)
+    return { success: true }
   } catch (error) {
     return { success: false, error: error.message }
   }
@@ -131,7 +145,8 @@ export async function deleteQueue(categoryId, queueId) {
 
 export async function reorderQueues(categoryId, queueIds) {
   try {
-    return await dbReorderQueues(categoryId, queueIds)
+    await dbReorderQueues(categoryId, queueIds)
+    return { success: true }
   } catch (error) {
     return { success: false, error: error.message }
   }
@@ -139,7 +154,8 @@ export async function reorderQueues(categoryId, queueIds) {
 
 export async function moveQueue(fromCategoryId, toCategoryId, queueId, newIndex) {
   try {
-    return await dbMoveQueue(fromCategoryId, toCategoryId, queueId, newIndex)
+    await dbMoveQueue(fromCategoryId, toCategoryId, queueId, newIndex)
+    return { success: true }
   } catch (error) {
     return { success: false, error: error.message }
   }
@@ -148,7 +164,8 @@ export async function moveQueue(fromCategoryId, toCategoryId, queueId, newIndex)
 // 設定操作
 export async function getSettings() {
   try {
-    return await dbGetSettings()
+    const settings = await dbGetSettings()
+    return { success: true, data: settings }
   } catch (error) {
     return { success: false, error: error.message }
   }
@@ -156,7 +173,9 @@ export async function getSettings() {
 
 export async function updateSettings(newSettings) {
   try {
-    return await dbUpdateSettings(newSettings)
+    await dbUpdateSettings(newSettings)
+    const updatedSettings = await dbGetSettings()
+    return { success: true, data: updatedSettings }
   } catch (error) {
     return { success: false, error: error.message }
   }
