@@ -4,7 +4,8 @@
   "main": "main.cjs",
   "scripts": {
     "start": "electron .",
-    "build": "electron-forge make"
+    "build": "electron-forge make --platform=win32",
+    "build:windows": "electron-forge make --platform=win32"
   },
   "keywords": [],
   "author": "",
@@ -12,6 +13,7 @@
   "description": "",
   "devDependencies": {
     "@electron-forge/cli": "^7.10.2",
+    "@electron-forge/maker-zip": "^7.10.2",
     "electron": "^39.1.1"
   }
 }

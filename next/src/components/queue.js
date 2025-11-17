@@ -302,6 +302,7 @@ function Queue({ category }) {
                     <h1>Queue is full</h1>
                 </div>
             )}
+            {/* <div className="border-1 border-gray-300 rounded-md w-full"> */}
             <ReactSortable animation={200} list={queue} setList={handleListChange} className="w-full">
                 {queue.length > 5 ? (
                     queue.slice(queue.length - 5, queue.length).map((item) => (
@@ -312,7 +313,20 @@ function Queue({ category }) {
                 ) : (
                     queue.map((item, index) => (
                         index >= queue.length - currentCategory.popLimit || !currentCategory.popLimit ? (
-                            <div key={item.id} onMouseEnter={() => setHoveringTargetId(item.id)} onMouseLeave={() => setHoveringTargetId(null)} onDoubleClick={() => handleDoubleClick(item)} className="flex justify-between border-2 border-gray-300 rounded-md p-2 my-1 items-center cursor-pointer w-full">
+                            <div
+                                key={item.id}
+                                onMouseEnter={() => setHoveringTargetId(item.id)}
+                                onMouseLeave={() => setHoveringTargetId(null)}
+                                onDoubleClick={() => handleDoubleClick(item)}
+                                className={[
+                                    "flex justify-between",
+                                    "p-2 items-center cursor-pointer w-full border border-gray-300",
+                                    index === 0 ? "rounded-t-md" : null,
+                                    index === queue.length - 1 ? "border-t-0 border-b-0" : "",
+                                    index !== 0 && index !== queue.length - 1 ? "border-t-0" : "",
+                                ]
+                                .filter(Boolean)
+                                .join(" ")}>
                                 {editingItemId === item.id ? (
                                     <input
                                         type="text"
@@ -361,13 +375,15 @@ function Queue({ category }) {
                     ))
                 )}
             </ReactSortable>
-            <Button onClick={() => handlePop()} variant="destructive" className="cursor-pointer flex w-full">Pop</Button>
+            {/* </div> */}
+            {queue.length > 0 && (
+                <Button onClick={() => handlePop()} variant="destructive" className="cursor-pointer flex w-full rounded-t-none">Pop</Button>
+            )}
             <div className="flex flex-col">
                 <QueuePushInput onPush={handlePush} />
                 <div className="flex justify-end items-end">
                     </div>
                 </div>
-
             <Dialog open={isPopLimitDialogOpen} onOpenChange={setIsPopLimitDialogOpen}>
                 <DialogContent className="sm:max-w-[425px]">
                     <DialogHeader>
