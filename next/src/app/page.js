@@ -5,11 +5,18 @@ import Queue from "../components/queue";
 import DBTest from "../components/dbtest";
 import { useState, useEffect } from "react";
 import { getCategories, addCategory } from "../actions/queueActions";
+import { ActionBar, Button, Checkbox, Portal, Box } from "@chakra-ui/react"
+import { Trash2, Share, Plus, X } from "lucide-react"
+import { Input } from "@chakra-ui/react"
+import { NumberInput } from "@chakra-ui/react"
+import { ColorPicker } from "@chakra-ui/react"
+import { IconButton } from "@chakra-ui/react"
 
 export default function Home() {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [categoryInput, setCategoryInput] = useState("");
+  const [showCategoryActionBar, setShowCategoryActionBar] = useState(false)
 
   const handleAddCategory = async () => {
     const result = await addCategory({ name: categoryInput, popLimit: 5 });
@@ -57,11 +64,67 @@ export default function Home() {
             </div>
           )}
         </div>
-        <div className="flex flex-wrap items-center justify-center gap-3">
+        {/* <div className="flex flex-wrap items-center justify-center gap-3">
           <input className="border border-gray-300 rounded-md p-2 min-w-[200px]" type="text" placeholder="Category Name" value={categoryInput} onChange={(e) => setCategoryInput(e.target.value)} />
           <input type="color" className="h-10 w-16 rounded-md cursor-pointer border border-gray-300" defaultValue="#000000" />
           <button onClick={handleAddCategory} className="bg-blue-500 text-white px-3 py-2 rounded-md cursor-pointer hover:bg-blue-600 transition-colors">Create New Category</button>
-        </div>
+        </div> */}
+        <Button variant="outline" size="sm" onClick={() => setShowCategoryActionBar(true)}>
+          <Plus />
+          Create New Category
+        </Button>
+      <ActionBar.Root open={showCategoryActionBar}>
+        <Portal>
+          <ActionBar.Positioner>
+            <ActionBar.Content position="relative">
+              <IconButton 
+                aria-label="Close" 
+                rounded="full" 
+                onClick={() => setShowCategoryActionBar(false)} 
+                size="xs" 
+                cursor="pointer"
+                position="absolute"
+                top={-3}
+                right={-3}
+                zIndex={10}
+                bgColor="red.600"
+              >
+                <X />
+              </IconButton>
+              
+              <Input placeholder="Category Name" />
+              <NumberInput.Root defaultValue={5} min={1} max={10}>
+                <NumberInput.Control>
+                  <NumberInput.IncrementTrigger />
+                  <NumberInput.DecrementTrigger />
+                </NumberInput.Control>
+                <NumberInput.Scrubber />
+                <NumberInput.Input />
+              </NumberInput.Root>
+
+              <ColorPicker.Root>
+                <ColorPicker.HiddenInput />
+                <ColorPicker.Control>
+                  <ColorPicker.Trigger cursor="pointer" />
+                </ColorPicker.Control>
+                <ColorPicker.Positioner>
+                  <ColorPicker.Content>
+                    <ColorPicker.Area />
+                    <ColorPicker.Input />
+                  </ColorPicker.Content>
+                </ColorPicker.Positioner>
+              </ColorPicker.Root>
+
+              <ActionBar.Separator />
+
+              <Button variant="outline" size="sm" onClick={handleAddCategory}>
+                <Plus />
+                Create New Category
+              </Button>
+            </ActionBar.Content>
+          </ActionBar.Positioner>
+        </Portal>
+      </ActionBar.Root>
       </main>
     </div>
   );

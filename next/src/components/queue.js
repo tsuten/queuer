@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { ReactSortable } from "react-sortablejs";
 import { getQueuesByCategory, deleteCategory, addQueue, deleteQueue, reorderQueues, updateQueue, updateCategory } from "../actions/queueActions";
 import { Ellipsis, Trash2, X } from 'lucide-react';
@@ -8,20 +8,7 @@ import { Toast } from '@base-ui-components/react/toast';
 import QueuePushInput from './queuePushInput';
 import styles from './queue.module.css';
 import { Button } from "@/components/ui/button"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuPortal,
-  DropdownMenuSeparator,
-  DropdownMenuShortcut,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+import { Listbox, createListCollection, Box, Flex, Menu } from "@chakra-ui/react"
 import {
   Dialog,
   DialogContent,
@@ -266,121 +253,151 @@ function Queue({ category }) {
         }
     }, [popLimitValue]);
     
+    // queueからListboxのcollectionを作成
+    const queueCollection = useMemo(() => {
+        return createListCollection({
+            items: queue.map(item => ({
+                label: item.name,
+                value: item.id.toString(),
+                ...item
+            }))
+        });
+    }, [queue]);
+    
     return (
         isDeleted ? (
             <div>
             </div>
         ) : (
-        <div className="flex flex-col items-start justify-start">
-            <div className="flex flex-row items-center justify-between w-full">
+        <Flex flexDirection="column" alignItems="flex-start" justifyContent="flex-start">
+            <Flex flexDirection="row" alignItems="center" justifyContent="space-between" width="100%">
                 <QueueCategoryName category={category} />
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="outline" className="w-8 h-8 rounded-full cursor-pointer">
-                            <Ellipsis className="w-4 h-4" />
+                <Menu.Root positioning={{ placement: "center-start" }}>
+                    <Menu.Trigger asChild>
+                        <Button variant="outline" style={{ width: '32px', height: '32px', borderRadius: '9999px', cursor: 'pointer' }}>
+                            <Ellipsis style={{ width: '16px', height: '16px' }} />
                         </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                        <DropdownMenuItem onClick={handleDeleteCategory} className="cursor-pointer text-red-500 focus:text-red-500">
-                            <Trash2 className="w-4 h-4 text-red-500" />
-                            Delete Category
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={handleOpenPopLimitDialog} className="cursor-pointer">
-                            Change pop limit
-                        </DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
-            </div>
+                    </Menu.Trigger>
+                    <Menu.Positioner>
+                        <Menu.Content>
+                        <Menu.Item
+                        value="delete"
+                        color="fg.error"
+                        _hover={{ bg: "bg.error", color: "fg.error" }}
+                        rounded="xs"
+                        cursor="pointer"
+                        onClick={handleDeleteCategory}
+                        >
+                          <Trash2 style={{ width: '16px', height: '16px', color: '#ef4444'}} />
+                          <Box>Delete Category</Box>
+                        </Menu.Item>
+                            <Menu.Item value="pop-limit" onClick={handleOpenPopLimitDialog} cursor="pointer" rounded="xs">
+                                Change pop limit
+                            </Menu.Item>
+                        </Menu.Content>
+                    </Menu.Positioner>
+                </Menu.Root>
+            </Flex>
             {error && (
-                <div className="text-sm text-red-500 my-2">
+                <Box fontSize="sm" color="red.500" my={2}>
                     {error}
-                </div>
+                </Box>
             )}
             {/* 5つ以上の要素があった時のsort動作が不安定 */}
             {queue.length > 5 && (
-                <div>
-                    <h1>Queue is full</h1>
-                </div>
+                <Box>
+                    <Box as="h1">Queue is full</Box>
+                </Box>
             )}
-            {/* <div className="border-1 border-gray-300 rounded-md w-full"> */}
-            <ReactSortable animation={200} list={queue} setList={handleListChange} className="w-full">
-                {queue.length > 5 ? (
-                    queue.slice(queue.length - 5, queue.length).map((item) => (
-                        <div key={item.id} className="flex items-center justify-center border-2 border-gray-300 rounded-md p-2 m-2 w-full">
-                            <h1>{item.name}</h1>
-                        </div>
-                    ))
-                ) : (
-                    queue.map((item, index) => (
-                        index >= queue.length - currentCategory.popLimit || !currentCategory.popLimit ? (
-                            <div
-                                key={item.id}
-                                onMouseEnter={() => setHoveringTargetId(item.id)}
-                                onMouseLeave={() => setHoveringTargetId(null)}
-                                onDoubleClick={() => handleDoubleClick(item)}
-                                className={[
-                                    "flex justify-between",
-                                    "p-2 items-center cursor-pointer w-full border border-gray-300",
-                                    index === 0 ? "rounded-t-md" : null,
-                                    index === queue.length - 1 ? "border-t-0 border-b-0" : "",
-                                    index !== 0 && index !== queue.length - 1 ? "border-t-0" : "",
-                                ]
-                                .filter(Boolean)
-                                .join(" ")}>
-                                {editingItemId === item.id ? (
-                                    <input
-                                        type="text"
-                                        value={editingValue}
-                                        onChange={(e) => setEditingValue(e.target.value)}
-                                        onBlur={() => handleBlur(item)}
-                                        onKeyDown={(e) => handleKeyDown(e, item)}
-                                        autoFocus
-                                        className="flex-1 outline-none bg-transparent"
-                                    />
-                                ) : (
-                                    <h1>{item.name}</h1>
-                                )}
-                                <Button variant="ghost" className="w-4 h-4 cursor-pointer" onClick={() => handleDelete(item.id)}>
-                                    {hoveringTargetId === item.id ? (
-                                        <X className="w-4 h-4 text-gray-500" />
-                                    ) : (
-                                        <X className="w-4 h-4 text-gray-500 hidden" />
-                                    )}
-                                </Button>
-                            </div>
+            
+            <Listbox.Root collection={queueCollection} width="100%">
+                <Listbox.Content asChild>
+                    <ReactSortable animation={200} list={queue} setList={handleListChange} style={{ width: '100%', display: 'flex', flexDirection: 'column' }} tag="div">
+                        {queue.length > 5 ? (
+                            queue.slice(queue.length - 5, queue.length).map((item) => (
+                                <Box 
+                                    key={item.id}
+                                    data-scope="listbox"
+                                    data-part="item"
+                                    position="relative"
+                                    display="flex"
+                                    cursor="pointer"
+                                    userSelect="none"
+                                    alignItems="center"
+                                    borderRadius="xs"
+                                    px={2}
+                                    py={1.5}
+                                    _hover={{ bg: 'gray.100' }}
+                                >
+                                    <Box flex={1}>{item.name}</Box>
+                                </Box>
+                            ))
                         ) : (
-                            <div key={item.id} onMouseEnter={() => setHoveringTargetId(item.id)} onMouseLeave={() => setHoveringTargetId(null)} onDoubleClick={() => handleDoubleClick(item)} className="flex justify-between border-2 border-gray-300 rounded-md p-2 bg-gray-200 my-1 items-center cursor-pointer w-full">
-                                {editingItemId === item.id ? (
-                                    <input
-                                        type="text"
-                                        value={editingValue}
-                                        onChange={(e) => setEditingValue(e.target.value)}
-                                        onBlur={() => handleBlur(item)}
-                                        onKeyDown={(e) => handleKeyDown(e, item)}
-                                        autoFocus
-                                        className="flex-1 outline-none bg-transparent"
-                                    />
-                                ) : (
-                                    <h1>{item.name}</h1>
-                                )}
-                                <Button variant="ghost" className="w-4 h-4 cursor-pointer" onClick={() => handleDelete(item.id)}>
-                                    {hoveringTargetId === item.id ? (
-                                        <X className="w-4 h-4 text-gray-500" />
+                            queue.map((item, index) => (
+                                <Box
+                                    key={item.id}
+                                    data-scope="listbox"
+                                    data-part="item"
+                                    onMouseEnter={() => setHoveringTargetId(item.id)}
+                                    onMouseLeave={() => setHoveringTargetId(null)}
+                                    onDoubleClick={() => handleDoubleClick(item)}
+                                    position="relative"
+                                    display="flex"
+                                    cursor="pointer"
+                                    userSelect="none"
+                                    alignItems="center"
+                                    borderRadius="xs"
+                                    px={2}
+                                    py={1.5}
+                                    bg={
+                                        index >= queue.length - currentCategory.popLimit || !currentCategory.popLimit 
+                                            ? "transparent" 
+                                            : "gray.200"
+                                    }
+                                    _hover={{ bg: index >= queue.length - currentCategory.popLimit || !currentCategory.popLimit ? 'gray.100' : 'gray.300' }}
+                                    transition="background-color 0.2s"
+                                >
+                                    {editingItemId === item.id ? (
+                                        <Box
+                                            as="input"
+                                            type="text"
+                                            value={editingValue}
+                                            onChange={(e) => setEditingValue(e.target.value)}
+                                            onBlur={() => handleBlur(item)}
+                                            onKeyDown={(e) => handleKeyDown(e, item)}
+                                            autoFocus
+                                            flex={1}
+                                            outline="none"
+                                            bg="transparent"
+                                        />
                                     ) : (
-                                        <X className="w-4 h-4 text-gray-500 hidden" />
+                                        <Box flex={1}>{item.name}</Box>
                                     )}
-                                </Button>
-                            </div>
-                        )
-                    ))
-                )}
-            </ReactSortable>
-            {/* </div> */}
+                                    <Button 
+                                        variant="ghost" 
+                                        style={{ width: '16px', height: '16px', cursor: 'pointer', marginLeft: '8px' }}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleDelete(item.id);
+                                        }}
+                                    >
+                                        {hoveringTargetId === item.id ? (
+                                            <X style={{ width: '16px', height: '16px', color: '#6b7280' }} />
+                                        ) : (
+                                            <X style={{ width: '16px', height: '16px', color: '#6b7280', display: 'none' }} />
+                                        )}
+                                    </Button>
+                                </Box>
+                            ))
+                        )}
+                    </ReactSortable>
+                </Listbox.Content>
+            </Listbox.Root>
             {queue.length > 0 && (
                 <Button onClick={() => handlePop()} variant="destructive" className="cursor-pointer flex w-full rounded-t-none">Pop</Button>
             )}
             <div className="flex flex-col">
-                <QueuePushInput onPush={handlePush} />
+                {/* <QueuePushInput onPush={handlePush} /> */}
                 <div className="flex justify-end items-end">
                     </div>
                 </div>
@@ -422,7 +439,7 @@ function Queue({ category }) {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-            </div>
+            </Flex>
         )
     )
 }
