@@ -16,7 +16,9 @@ export default function Home() {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [categoryInput, setCategoryInput] = useState("");
+  const [popLimitInput, setPopLimitInput] = useState(5);
   const [showCategoryActionBar, setShowCategoryActionBar] = useState(false)
+  const [colorInput, setColorInput] = useState("#000000");
 
   const handleAddCategory = async () => {
     const result = await addCategory({ name: categoryInput, popLimit: 5 });
@@ -45,6 +47,12 @@ export default function Home() {
     fetchCategories();
   }, []);
 
+  useEffect(() => {
+    console.log(colorInput);
+    console.log(popLimitInput);
+    console.log(categoryInput);
+  }, [colorInput, popLimitInput, categoryInput]);
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans">
       <main className="flex min-h-screen w-full flex-col items-center justify-between py-24 px-6 md:px-12">
@@ -69,10 +77,12 @@ export default function Home() {
           <input type="color" className="h-10 w-16 rounded-md cursor-pointer border border-gray-300" defaultValue="#000000" />
           <button onClick={handleAddCategory} className="bg-blue-500 text-white px-3 py-2 rounded-md cursor-pointer hover:bg-blue-600 transition-colors">Create New Category</button>
         </div> */}
+        {!showCategoryActionBar && (
         <Button variant="outline" size="sm" onClick={() => setShowCategoryActionBar(true)}>
           <Plus />
           Create New Category
         </Button>
+        )}
       <ActionBar.Root open={showCategoryActionBar}>
         <Portal>
           <ActionBar.Positioner>
@@ -92,8 +102,8 @@ export default function Home() {
                 <X />
               </IconButton>
               
-              <Input placeholder="Category Name" />
-              <NumberInput.Root defaultValue={5} min={1} max={10}>
+              <Input placeholder="Category Name" value={categoryInput} onChange={(e) => setCategoryInput(e.target.value)} />
+              <NumberInput.Root defaultValue={popLimitInput} min={1} max={10} onValueChange={(e) => setPopLimitInput(e.value)}>
                 <NumberInput.Control>
                   <NumberInput.IncrementTrigger />
                   <NumberInput.DecrementTrigger />
@@ -102,7 +112,7 @@ export default function Home() {
                 <NumberInput.Input />
               </NumberInput.Root>
 
-              <ColorPicker.Root>
+              <ColorPicker.Root onValueChange={(e) => setColorInput(e.value)}>
                 <ColorPicker.HiddenInput />
                 <ColorPicker.Control>
                   <ColorPicker.Trigger cursor="pointer" />

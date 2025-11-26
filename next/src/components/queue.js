@@ -3,12 +3,10 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { ReactSortable } from "react-sortablejs";
 import { getQueuesByCategory, deleteCategory, addQueue, deleteQueue, reorderQueues, updateQueue, updateCategory } from "../actions/queueActions";
-import { Ellipsis, Trash2, X } from 'lucide-react';
+import { Ellipsis, Trash2, X, ChevronsDown } from 'lucide-react';
 import { Toast } from '@base-ui-components/react/toast';
-import QueuePushInput from './queuePushInput';
 import styles from './queue.module.css';
-import { Button } from "@/components/ui/button"
-import { Listbox, createListCollection, Box, Flex, Menu } from "@chakra-ui/react"
+import { Listbox, createListCollection, Box, Flex, Menu, Button, IconButton, Input } from "@chakra-ui/react"
 import {
   Dialog,
   DialogContent,
@@ -17,7 +15,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import QueueCategoryName from "./queueCategoryName";
 
@@ -49,6 +46,9 @@ function Queue({ category }) {
     const [currentCategory, setCurrentCategory] = useState(category);
     const [popLimitError, setPopLimitError] = useState(false);
     const [prevPopLimit, setPrevPopLimit] = useState(0);
+    const [isPopButtonHovered, setIsPopButtonHovered] = useState(false);
+    const [isPushButtonHovered, setIsPushButtonHovered] = useState(false);
+    const [pushValue, setPushValue] = useState('');
     const fetchQueues = useCallback(async () => {
         setLoading(true);
         setError(null);
@@ -114,12 +114,13 @@ function Queue({ category }) {
         }
     }, [persistReorder, queue]);
 
-    const handlePush = async (item) => {
-        if (!item.trim()) return; // 空の入力を防ぐ
+    const handlePush = async () => {
+        if (!pushValue.trim()) return; // 空の入力を防ぐ
         try {
-            const result = await addQueue(category.id, { name: item.trim() });
+            const result = await addQueue(category.id, { name: pushValue.trim() });
             if (result.success && result.data) {
                 setQueue(prev => [result.data, ...prev]);
+                setPushValue('');
             }
         }
         catch (error) {
@@ -274,9 +275,9 @@ function Queue({ category }) {
                 <QueueCategoryName category={category} />
                 <Menu.Root positioning={{ placement: "center-start" }}>
                     <Menu.Trigger asChild>
-                        <Button variant="outline" style={{ width: '32px', height: '32px', borderRadius: '9999px', cursor: 'pointer' }}>
+                        <IconButton variant="outline" rounded="full" size="xs">
                             <Ellipsis style={{ width: '16px', height: '16px' }} />
-                        </Button>
+                        </IconButton>
                     </Menu.Trigger>
                     <Menu.Positioner>
                         <Menu.Content>
@@ -306,14 +307,35 @@ function Queue({ category }) {
             {/* 5つ以上の要素があった時のsort動作が不安定 */}
             {queue.length > 5 && (
                 <Box>
-                    <Box as="h1">Queue is full</Box>
+                    {/* <Box as="h1">Queue is full</Box> */}
                 </Box>
             )}
-            
-            <Listbox.Root collection={queueCollection} width="100%">
+            <Box 
+                    onMouseEnter={() => setIsPushButtonHovered(true)}
+                    onMouseLeave={() => setIsPushButtonHovered(false)}
+                    style={{ 
+                        width: '100%', 
+                        borderBottomLeftRadius: '0', 
+                        borderBottomRightRadius: '0',
+                        height: isPushButtonHovered ? '40px' : '15px',
+                        transition: 'height 0.2s ease-in-out',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        border: '1px solid',
+                        borderColor: 'var(--chakra-colors-border)',
+                        backgroundColor: 'var(--chakra-colors-bg-surface)',
+                    }}
+                >
+                    {isPushButtonHovered ? <Box display="flex" alignItems="center" justifyContent="center" gap={2}>
+                        <ChevronsDown style={{ width: '16px', height: '16px' }} />
+                        <Input value={pushValue} size="xs" onChange={(e) => setPushValue(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handlePush() }} />
+                    </Box> : <ChevronsDown style={{ width: '16px', height: '16px' }} />}
+                </Box>
+            <Listbox.Root collection={queueCollection} width="100%" >
                 <Listbox.Content asChild>
                     <ReactSortable animation={200} list={queue} setList={handleListChange} style={{ width: '100%', display: 'flex', flexDirection: 'column' }} tag="div">
-                        {queue.length > 5 ? (
+                        {/* {queue.length > 5 ? (
                             queue.slice(queue.length - 5, queue.length).map((item) => (
                                 <Box 
                                     key={item.id}
@@ -332,8 +354,8 @@ function Queue({ category }) {
                                     <Box flex={1}>{item.name}</Box>
                                 </Box>
                             ))
-                        ) : (
-                            queue.map((item, index) => (
+                        ) : ( */}
+                            {queue.map((item, index) => (
                                 <Box
                                     key={item.id}
                                     data-scope="listbox"
@@ -388,13 +410,27 @@ function Queue({ category }) {
                                         )}
                                     </Button>
                                 </Box>
-                            ))
-                        )}
+                            ))}
+                        {/* )} */}
                     </ReactSortable>
                 </Listbox.Content>
             </Listbox.Root>
             {queue.length > 0 && (
-                <Button onClick={() => handlePop()} variant="destructive" className="cursor-pointer flex w-full rounded-t-none">Pop</Button>
+                <Button 
+                    onClick={() => handlePop()} 
+                    colorPalette="red" 
+                    onMouseEnter={() => setIsPopButtonHovered(true)}
+                    onMouseLeave={() => setIsPopButtonHovered(false)}
+                    style={{ 
+                        width: '100%', 
+                        borderTopLeftRadius: '0', 
+                        borderTopRightRadius: '0',
+                        height: isPopButtonHovered ? '30px' : '15px',
+                        transition: 'height 0.2s ease-in-out'
+                    }}
+                >
+                    {isPopButtonHovered ? <Box display="flex" alignItems="center" justifyContent="center" gap={2}><ChevronsDown style={{ width: '16px', height: '16px' }} /> <span>pop</span></Box> : <ChevronsDown style={{ width: '16px', height: '16px' }} />}
+                </Button>
             )}
             <div className="flex flex-col">
                 {/* <QueuePushInput onPush={handlePush} /> */}
