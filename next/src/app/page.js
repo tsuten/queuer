@@ -11,6 +11,7 @@ import { Input } from "@chakra-ui/react"
 import { NumberInput } from "@chakra-ui/react"
 import { ColorPicker } from "@chakra-ui/react"
 import { IconButton } from "@chakra-ui/react"
+import SettingsModal from "../components/settingsModal";
 
 export default function Home() {
   const [categories, setCategories] = useState([]);
@@ -58,6 +59,7 @@ export default function Home() {
       <main className="flex min-h-screen w-full flex-col items-center justify-between py-24 px-6 md:px-12">
         <div className="flex flex-col items-center justify-center w-full max-w-7xl gap-10">
           <h1 className="text-4xl font-bold">Queuer</h1>
+          <SettingsModal />
           {loading ? (
             <div>Loading...</div>
           ) : (
