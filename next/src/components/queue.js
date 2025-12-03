@@ -556,13 +556,13 @@ function Queue({ category }) {
                                     key={item.id}
                                     position="relative"
                                     overflow="hidden"
+                                    onMouseEnter={() => setHoveringTargetId(item.id)}
+                                    onMouseLeave={() => setHoveringTargetId(null)}
                                 >
                                     <Box
                                         ref={index === queue.length - 1 ? setLastItemRef : null}
                                         data-scope="listbox"
                                         data-part="item"
-                                        onMouseEnter={() => setHoveringTargetId(item.id)}
-                                        onMouseLeave={() => setHoveringTargetId(null)}
                                         onDoubleClick={() => handleDoubleClick(item)}
                                         position="relative"
                                         display="flex"
