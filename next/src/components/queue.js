@@ -1,21 +1,25 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { ReactSortable } from "react-sortablejs";
 import { getQueuesByCategory, deleteCategory, addQueue, deleteQueue, reorderQueues, updateQueue, updateCategory } from "../actions/queueActions";
-import { Ellipsis, Trash2, X, ChevronsDown } from 'lucide-react';
+import { Ellipsis, Trash2, X, ChevronsDown, ChevronsRight, Plus, Minus } from 'lucide-react';
 import { Toast } from '@base-ui-components/react/toast';
 import styles from './queue.module.css';
-import { Listbox, createListCollection, Box, Flex, Menu, Button, IconButton, Input } from "@chakra-ui/react"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
+import { 
+    Listbox, 
+    createListCollection, 
+    Box, 
+    Flex, 
+    Menu, 
+    Button, 
+    IconButton, 
+    Input,
+    Dialog,
+    Text,
+    Card,
+    Group
+} from "@chakra-ui/react"
 import QueueCategoryName from "./queueCategoryName";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -127,6 +131,9 @@ function Queue({ category }) {
     const [pushValue, setPushValue] = useState('');
     const [explosions, setExplosions] = useState([]);
     const [lastItemRef, setLastItemRef] = useState(null);
+    const [isCursorOnIt, setIsCursorOnIt] = useState(false);
+    const [showPushInput, setShowPushInput] = useState(false);
+    const inputRef = useRef(null);
     const fetchQueues = useCallback(async () => {
         setLoading(true);
         setError(null);
@@ -223,7 +230,8 @@ function Queue({ category }) {
             };
             setExplosions(prev => [...prev, newExplosion]);
         }
-        
+        const audio = new Audio('/audio/pop.mp3');
+        audio.play();
         try {
             const result = await deleteQueue(category.id, target.id);
         } catch (error) {
@@ -347,6 +355,19 @@ function Queue({ category }) {
             console.log(prevPopLimit, popLimitValue);
         }
     }, [popLimitValue]);
+
+    // useEffect(() => {
+    //     console.log('isCursorOnIt:', isCursorOnIt);
+    // }, [isCursorOnIt]);
+
+    useEffect(() => {
+        if (showPushInput && inputRef.current) {
+            // 少し遅延を入れて確実にフォーカスを設定
+            setTimeout(() => {
+                inputRef.current?.focus();
+            }, 0);
+        }
+    }, [showPushInput]);
     
     // queueからListboxのcollectionを作成
     const queueCollection = useMemo(() => {
@@ -364,34 +385,53 @@ function Queue({ category }) {
             <div>
             </div>
         ) : (
-        <Flex flexDirection="column" alignItems="flex-start" justifyContent="flex-start">
+        <Card.Root
+            onMouseEnter={() => setIsCursorOnIt(true)}
+            onMouseLeave={() => setIsCursorOnIt(false)}
+        >
+        <Card.Body>
+        <Flex 
+            flexDirection="column" 
+            alignItems="flex-start" 
+            justifyContent="flex-start"
+        >
             <Flex flexDirection="row" alignItems="center" justifyContent="space-between" width="100%">
                 <QueueCategoryName category={category} />
-                <Menu.Root positioning={{ placement: "center-start" }}>
-                    <Menu.Trigger asChild>
-                        <IconButton variant="outline" rounded="full" size="xs">
-                            <Ellipsis style={{ width: '16px', height: '16px' }} />
-                        </IconButton>
-                    </Menu.Trigger>
-                    <Menu.Positioner>
-                        <Menu.Content>
-                        <Menu.Item
-                        value="delete"
-                        color="fg.error"
-                        _hover={{ bg: "bg.error", color: "fg.error" }}
-                        rounded="xs"
-                        cursor="pointer"
-                        onClick={handleDeleteCategory}
-                        >
-                          <Trash2 style={{ width: '16px', height: '16px', color: '#ef4444'}} />
-                          <Box>Delete Category</Box>
-                        </Menu.Item>
-                            <Menu.Item value="pop-limit" onClick={handleOpenPopLimitDialog} cursor="pointer" rounded="xs">
-                                Change pop limit
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: isCursorOnIt ? 1 : 0 }}
+                    transition={{ duration: 0.2, ease: "linear" }}
+                    style={{
+                        pointerEvents: isCursorOnIt ? 'auto' : 'none',
+                        visibility: isCursorOnIt ? 'visible' : 'hidden'
+                    }}
+                >
+                    <Menu.Root positioning={{ placement: "center-start" }}>
+                        <Menu.Trigger asChild>
+                            <IconButton variant="outline" rounded="full" size="xs">
+                                <Ellipsis style={{ width: '16px', height: '16px' }} />
+                            </IconButton>
+                        </Menu.Trigger>
+                        <Menu.Positioner>
+                            <Menu.Content>
+                            <Menu.Item
+                            value="delete"
+                            color="fg.error"
+                            _hover={{ bg: "bg.error", color: "fg.error" }}
+                            rounded="xs"
+                            cursor="pointer"
+                            onClick={handleDeleteCategory}
+                            >
+                              <Trash2 style={{ width: '16px', height: '16px', color: '#ef4444'}} />
+                              <Box>Delete Category</Box>
                             </Menu.Item>
-                        </Menu.Content>
-                    </Menu.Positioner>
-                </Menu.Root>
+                                <Menu.Item value="pop-limit" onClick={handleOpenPopLimitDialog} cursor="pointer" rounded="xs">
+                                    Change pop limit
+                                </Menu.Item>
+                            </Menu.Content>
+                        </Menu.Positioner>
+                    </Menu.Root>
+                </motion.div>
             </Flex>
             {error && (
                 <Box fontSize="sm" color="red.500" my={2}>
@@ -404,7 +444,7 @@ function Queue({ category }) {
                     {/* <Box as="h1">Queue is full</Box> */}
                 </Box>
             )}
-            <Box 
+            {/* <Box 
                     onMouseEnter={() => setIsPushButtonHovered(true)}
                     onMouseLeave={() => setIsPushButtonHovered(false)}
                     style={{ 
@@ -425,10 +465,72 @@ function Queue({ category }) {
                         <ChevronsDown style={{ width: '16px', height: '16px' }} />
                         <Input value={pushValue} size="xs" onChange={(e) => setPushValue(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handlePush() }} />
                     </Box> : <ChevronsDown style={{ width: '16px', height: '16px' }} />}
-                </Box>
-            <Listbox.Root collection={queueCollection} width="100%" >
-                <Listbox.Content asChild>
-                    <ReactSortable animation={200} list={queue} setList={handleListChange} style={{ width: '100%', display: 'flex', flexDirection: 'column' }} tag="div">
+                </Box> */}
+            <Box position="relative" width="100%">
+                {!showPushInput && (
+                    <Box
+                        position="absolute"
+                        top="-16px"
+                        left="50%"
+                        transform="translateX(-50%)"
+                        zIndex={10}
+                        opacity={isCursorOnIt ? 1 : 0}
+                        pointerEvents={isCursorOnIt ? 'auto' : 'none'}
+                        transition="opacity 0.2s ease-in-out"
+                    >
+                        <IconButton
+                            size="xs"
+                            variant="surface"
+                            rounded="full"
+                            onClick={() => setShowPushInput(true)}
+                        >
+                            <Plus style={{ width: '16px', height: '16px' }} />
+                        </IconButton>
+                    </Box>
+                )}
+                {showPushInput && (
+                    <Group attached w="full" mb={2}>
+                        <Input
+                            ref={inputRef}
+                            flex="1"
+                            variant="outline"
+                            value={pushValue}
+                            onChange={(e) => setPushValue(e.target.value)}
+                            onBlur={() => {
+                                // 少し遅延を入れて、追加ボタンのクリックイベントが処理されるのを待つ
+                                setTimeout(() => {
+                                    setShowPushInput(false);
+                                    setPushValue('');
+                                }, 100);
+                            }}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                    handlePush();
+                                    setShowPushInput(false);
+                                } else if (e.key === 'Escape') {
+                                    setShowPushInput(false);
+                                    setPushValue('');
+                                }
+                            }}
+                            placeholder="新しいタスクを追加..."
+                        />
+                        <IconButton 
+                            onMouseDown={(e) => {
+                                e.preventDefault(); // onBlurより先に処理されるようにする
+                                handlePush();
+                                setShowPushInput(false);
+                            }}
+                            size="md" 
+                            aria-label="追加" 
+                            variant="outline"
+                        >
+                            <Plus style={{ width: '16px', height: '16px' }} />
+                        </IconButton>
+                    </Group>
+                )}
+                <Listbox.Root collection={queueCollection} width="100%" border="none" borderWidth={0}>
+                <Listbox.Content asChild border="none" borderWidth={0}>
+                    <ReactSortable animation={200} list={queue} setList={handleListChange} style={{ width: '100%', display: 'flex', flexDirection: 'column', border: 'none' }} tag="div">
                         {/* {queue.length > 5 ? (
                             queue.slice(queue.length - 5, queue.length).map((item) => (
                                 <Box 
@@ -452,65 +554,126 @@ function Queue({ category }) {
                             {queue.map((item, index) => (
                                 <Box
                                     key={item.id}
-                                    ref={index === queue.length - 1 ? setLastItemRef : null}
-                                    data-scope="listbox"
-                                    data-part="item"
-                                    onMouseEnter={() => setHoveringTargetId(item.id)}
-                                    onMouseLeave={() => setHoveringTargetId(null)}
-                                    onDoubleClick={() => handleDoubleClick(item)}
                                     position="relative"
-                                    display="flex"
-                                    cursor="pointer"
-                                    userSelect="none"
-                                    alignItems="center"
-                                    borderRadius="xs"
-                                    px={2}
-                                    py={1.5}
-                                    bg={
-                                        index >= queue.length - currentCategory.popLimit || !currentCategory.popLimit 
-                                            ? "transparent" 
-                                            : "gray.200"
-                                    }
-                                    _hover={{ bg: index >= queue.length - currentCategory.popLimit || !currentCategory.popLimit ? 'gray.100' : 'gray.300' }}
-                                    transition="background-color 0.2s"
+                                    overflow="hidden"
                                 >
-                                    {editingItemId === item.id ? (
-                                        <Box
-                                            as="input"
-                                            type="text"
-                                            value={editingValue}
-                                            onChange={(e) => setEditingValue(e.target.value)}
-                                            onBlur={() => handleBlur(item)}
-                                            onKeyDown={(e) => handleKeyDown(e, item)}
-                                            autoFocus
-                                            flex={1}
-                                            outline="none"
-                                            bg="transparent"
-                                        />
-                                    ) : (
-                                        <Box flex={1}>{item.name}</Box>
-                                    )}
-                                    <Button 
-                                        variant="ghost" 
-                                        style={{ width: '16px', height: '16px', cursor: 'pointer', marginLeft: '8px' }}
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleDelete(item.id);
-                                        }}
+                                    <Box
+                                        ref={index === queue.length - 1 ? setLastItemRef : null}
+                                        data-scope="listbox"
+                                        data-part="item"
+                                        onMouseEnter={() => setHoveringTargetId(item.id)}
+                                        onMouseLeave={() => setHoveringTargetId(null)}
+                                        onDoubleClick={() => handleDoubleClick(item)}
+                                        position="relative"
+                                        display="flex"
+                                        cursor="pointer"
+                                        userSelect="none"
+                                        alignItems="center"
+                                        borderRadius="xs"
+                                        px={2}
+                                        py={1.5}
+                                        pr={hoveringTargetId === item.id ? "64px" : 2}
+                                        bg={
+                                            index >= queue.length - currentCategory.popLimit || !currentCategory.popLimit 
+                                                ? "gray.50" 
+                                                : "gray.200"
+                                        }
+                                        _hover={{ bg: index >= queue.length - currentCategory.popLimit || !currentCategory.popLimit ? 'gray.100' : 'gray.300' }}
+                                        transition="all 0.2s"
                                     >
-                                        {hoveringTargetId === item.id ? (
-                                            <X style={{ width: '16px', height: '16px', color: '#6b7280' }} />
+                                        {editingItemId === item.id ? (
+                                            <Box
+                                                as="input"
+                                                type="text"
+                                                value={editingValue}
+                                                onChange={(e) => setEditingValue(e.target.value)}
+                                                onBlur={() => handleBlur(item)}
+                                                onKeyDown={(e) => handleKeyDown(e, item)}
+                                                autoFocus
+                                                flex={1}
+                                                outline="none"
+                                                bg="transparent"
+                                            />
                                         ) : (
-                                            <X style={{ width: '16px', height: '16px', color: '#6b7280', display: 'none' }} />
+                                            <Box flex={1}>{item.name}</Box>
                                         )}
-                                    </Button>
+                                    </Box>
+                                    <AnimatePresence>
+                                        {hoveringTargetId === item.id && (
+                                            <motion.div
+                                                initial={{ x: 100 }}
+                                                animate={{ x: 0 }}
+                                                exit={{ x: 100 }}
+                                                transition={{ duration: 0.3, ease: "easeInOut" }}
+                                                style={{
+                                                    position: 'absolute',
+                                                    right: 0,
+                                                    top: 0,
+                                                    height: '100%',
+                                                    zIndex: 10,
+                                                    display: 'flex'
+                                                }}
+                                            >
+                                                <Button 
+                                                    variant="solid"
+                                                    size="xs"
+                                                    h="full"
+                                                    w="32px"
+                                                    minW="32px"
+                                                    borderRadius="none"
+                                                    colorPalette="red"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        // 新しいボタンの処理をここに追加
+                                                    }}
+                                                >
+                                                    <Trash2 style={{ width: '16px', height: '16px' }} />
+                                                </Button>
+                                                <Button 
+                                                    variant="solid"
+                                                    size="xs"
+                                                    h="full"
+                                                    w="32px"
+                                                    minW="32px"
+                                                    borderRadius="none"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleDelete(item.id);
+                                                    }}
+                                                >
+                                                    <ChevronsRight style={{ width: '16px', height: '16px' }} />
+                                                </Button>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
                                 </Box>
                             ))}
                         {/* )} */}
                     </ReactSortable>
                 </Listbox.Content>
             </Listbox.Root>
-            {queue.length > 0 && (
+                <Box
+                    position="absolute"
+                    bottom="-16px"
+                    left="50%"
+                    transform="translateX(-50%)"
+                    zIndex={10}
+                    opacity={isCursorOnIt ? 1 : 0}
+                    pointerEvents={isCursorOnIt ? 'auto' : 'none'}
+                    transition="opacity 0.2s ease-in-out"
+                >
+                    <IconButton
+                        size="xs"
+                        variant="surface"
+                        rounded="full"
+                        colorPalette="red"
+                        onClick={handlePop}
+                    >
+                        <Minus style={{ width: '16px', height: '16px' }} />
+                    </IconButton>
+                </Box>
+            </Box>
+            {/* {queue.length > 0 && (
                 <Button 
                     onClick={() => handlePop()} 
                     colorPalette="red" 
@@ -526,50 +689,65 @@ function Queue({ category }) {
                 >
                     {isPopButtonHovered ? <Box display="flex" alignItems="center" justifyContent="center" gap={2}><ChevronsDown style={{ width: '16px', height: '16px' }} /> <span>pop</span></Box> : <ChevronsDown style={{ width: '16px', height: '16px' }} />}
                 </Button>
-            )}
+            )} */}
             <div className="flex flex-col">
                 {/* <QueuePushInput onPush={handlePush} /> */}
                 <div className="flex justify-end items-end">
                     </div>
                 </div>
-            <Dialog open={isPopLimitDialogOpen} onOpenChange={setIsPopLimitDialogOpen}>
-                <DialogContent className="sm:max-w-[425px]">
-                    <DialogHeader>
-                        <DialogTitle>Pop Limitの変更</DialogTitle>
-                        <DialogDescription>
-                            キューから削除されないように保護する要素数を設定します。
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                        {popLimitError && (
-                            <div className="text-sm text-red-500">
-                                Pop Limitは0以上に設定してください。
-                            </div>
-                        )}
-                        <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="popLimit" className="text-right">
-                                Pop Limit
-                            </Label>
-                            <Input
-                                id="popLimit"
-                                type="number"
-                                min="0"
-                                value={popLimitValue}
-                                onChange={(e) => setPopLimitValue(e.target.value)}
-                                className="col-span-3"
-                            />
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsPopLimitDialogOpen(false)}>
-                            キャンセル
-                        </Button>
-                        <Button onClick={handleSavePopLimit}>
-                            保存
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+            <Dialog.Root 
+                open={isPopLimitDialogOpen} 
+                onOpenChange={(e) => setIsPopLimitDialogOpen(e.open)}
+            >
+                <Dialog.Backdrop />
+                <Dialog.Positioner>
+                    <Dialog.Content maxW="425px">
+                        <Dialog.Header>
+                            <Dialog.Title>Pop Limitの変更</Dialog.Title>
+                        </Dialog.Header>
+                        <Dialog.CloseTrigger />
+                        <Dialog.Body display="flex" flexDirection="column" gap={4} py={4}>
+                            <Text fontSize="sm" color="gray.600">
+                                キューから削除されないように保護する要素数を設定します。
+                            </Text>
+                            {popLimitError && (
+                                <Text fontSize="sm" color="red.500">
+                                    Pop Limitは0以上に設定してください。
+                                </Text>
+                            )}
+                            <Flex alignItems="center" gap={4}>
+                                <Text 
+                                    as="label" 
+                                    htmlFor="popLimit" 
+                                    textAlign="right"
+                                    minW="100px"
+                                >
+                                    Pop Limit
+                                </Text>
+                                <Input
+                                    id="popLimit"
+                                    type="number"
+                                    min="0"
+                                    value={popLimitValue}
+                                    onChange={(e) => setPopLimitValue(e.target.value)}
+                                    flex={1}
+                                />
+                            </Flex>
+                        </Dialog.Body>
+                        <Dialog.Footer display="flex" gap={3}>
+                            <Button 
+                                variant="outline" 
+                                onClick={() => setIsPopLimitDialogOpen(false)}
+                            >
+                                キャンセル
+                            </Button>
+                            <Button onClick={handleSavePopLimit}>
+                                保存
+                            </Button>
+                        </Dialog.Footer>
+                    </Dialog.Content>
+                </Dialog.Positioner>
+            </Dialog.Root>
             {/* パーティクル爆発エフェクト */}
             {explosions.map((explosion) => (
                 <ParticleExplosion
@@ -583,6 +761,8 @@ function Queue({ category }) {
                 />
             ))}
             </Flex>
+        </Card.Body>
+        </Card.Root>
         )
     )
 }
