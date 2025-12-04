@@ -2,6 +2,13 @@ const { app, BrowserWindow, ipcMain, Tray, Menu } = require('electron')
 const path = require('path')
 const db = require('./db.cjs')
 
+const isDev = !app.isPackaged;
+if (isDev) {
+  console.log('isDev')
+} else {
+  console.log('isProd')
+}
+
 // データベースにappインスタンスを設定
 db.setApp(app)
 
@@ -24,7 +31,13 @@ const createWindow = () => {
       },
   })
   // Load the index.html from the app directory
-  win.loadFile(path.join(__dirname, '..', 'react', 'dist', 'index.html'))
+  if (isDev) {
+    win.loadURL('http://localhost:5173')
+    // 開発モードで開発者ツールを自動的に開く
+    // win.webContents.openDevTools()
+  } else {
+    win.loadFile(path.join(__dirname, '..', 'react', 'dist', 'index.html'))
+  }
 }
 
 function createTray() {
