@@ -2,12 +2,12 @@ const { app, BrowserWindow, ipcMain, Tray, Menu } = require('electron')
 const path = require('path')
 const db = require('./db.cjs')
 
-const isDev = !app.isPackaged;
-if (isDev) {
-  console.log('isDev')
-} else {
-  console.log('isProd')
-}
+// const isDev = !app.isPackaged;
+// if (isDev) {
+//   console.log('isDev')
+// } else {
+//   console.log('isProd')
+// }
 
 // データベースにappインスタンスを設定
 db.setApp(app)
@@ -21,27 +21,36 @@ const template = [
 const menu = Menu.buildFromTemplate(template)
 Menu.setApplicationMenu(menu)
 const createWindow = () => {
+
   const win = new BrowserWindow({
     width: 800,
     height: 600,
     webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
-        preload: path.join(__dirname, 'preload.cjs'),
+        preload: path.join(app.getAppPath(), 'preload.cjs')
       },
   })
   // Load the index.html from the app directory
-  if (isDev) {
-    win.loadURL('http://localhost:5173')
-    // 開発モードで開発者ツールを自動的に開く
-    // win.webContents.openDevTools()
-  } else {
-    win.loadFile(path.join(__dirname, '..', 'react', 'dist', 'index.html'))
-  }
+  // if (isDev) {
+  //   win.loadURL('http://localhost:5173')
+  // } else {
+    // ビルド後はprocess.resourcesPathを使用
+    // const distPath = path.join(process.resourcesPath, 'dist', 'index.html')
+    // win.loadFile(distPath)
+  // }
+
+  const distPath = path.join(process.resourcesPath, 'dist', 'index.html')
+  win.loadFile(distPath)
+  
+  // 開発環境・ビルド後どちらでも開発者ツールを開く（デバッグ用）
+  // win.webContents.openDevTools()
+  
+  // return win
 }
 
 function createTray() {
-  const tray = new Tray(path.join(__dirname, 'assets', 'icon.png'))
+  const tray = new Tray(path.join(process.resourcesPath, 'assets', 'icon.png'))
   tray.setToolTip('Queuer')
   tray.on('click', () => {
     BrowserWindow.getAllWindows()[0].show()
